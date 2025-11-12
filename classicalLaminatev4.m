@@ -259,7 +259,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     LaminateResults.epsLayer123 = epsLayer123;
     LaminateResults.sigmaLayer123 = sigmaLayer123;
 
-        %% Creating Tabular Output for Stresses and Strains in XYZ
+    %% Creating Tabular Output for Stresses and Strains in XYZ
 
     % Strain Table
     LayerNum = zeros(2*N,1);
