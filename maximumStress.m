@@ -1,0 +1,109 @@
+function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStrength)
+    
+    % Extracting Stress Results from laminateAnalysis struct
+    stressArray = table2array(laminateAnalysis.StressTable123);
+    layerNum = stressArray(:,1);
+    zCoordLayer = stressArray(:,2);
+    sigma1 = stressArray(:,3);
+    sigma2 = stressArray(:,4);
+    tau12 = stressArray(:,5);
+    
+    % Extracting Principle Strengths from struct
+    Xc = principleStrength.Xc;
+    Xt = principleStrength.Xt;
+    Yc = principleStrength.Yc;
+    Yt = principleStrength.Yt;
+    S = principleStrength.S;
+    
+    % Checking Xc
+    failureXc = -Xc./sigma1;
+    
+    % Checking Xt
+    failureXt = Xt./sigma1;
+    
+    % Checking Yc
+    failureYc = -Yc./sigma2;
+    
+    % Checking Yt
+    failureYt = Yt./sigma2;
+    
+    % Checking +S
+    failurePosS = S./tau12;
+    
+    % Checking -S 
+    failureNegS = -S./tau12;
+    
+    % Creating Table for Displaying Failure Loads in Each Layer
+    failureLoadsTable = table(layerNum, zCoordLayer, failureXc, failureXt, failureYc, failureYt, failurePosS, failureNegS,...
+                             'VariableNames',{'Layer', 'z', 'Xc', 'Xt', 'Yc', 'Yt', '+S','-S'});
+    disp("------------------------------------------- Maximum Stress Results -------------------------------------------")
+    disp(" ")
+    disp(failureLoadsTable)
+    
+    % Saving Table in the Output Structure
+    maximumStressAnalysis.failureLoads = failureLoadsTable;
+
+    % Converting to Array
+    failureLoadsArray = table2array(failureLoadsTable);
+
+    failureLoads = failureLoadsArray(:,3:8);
+    tensileLoads = failureLoads(failureLoads > 0);
+    compressiveLoads = failureLoads(failureLoads < 0);
+   
+    % Computing Minimum Tensile and Compressive Failure Load
+    tensileFailureLoad = min(tensileLoads);
+    compressiveFailureLoad = max(compressiveLoads);
+
+    % Determining Which Layer(s) Drives Failure
+    [tensileFailureRowIdx, tensileFailureColIdx] = find(failureLoads == tensileFailureLoad);
+    [compressiveFailureRowIdx, compressiveFailureColIdx] = find(failureLoads == compressiveFailureLoad);
+
+    failedLayerTensile = layerNum(tensileFailureRowIdx,1);
+    failedLayerCompressive = layerNum(compressiveFailureRowIdx,1);
+
+    % Determining Failure Mode
+    if tensileFailureColIdx == 1
+        maximumStressAnalysis.tensileLoadFailureMode = 'Fiber Direction Compression Failure';
+    elseif tensileFailureColIdx == 2
+        maximumStressAnalysis.tensileLoadFailureMode = 'Fiber Direction Tension Failure';
+    elseif tensileFailureColIdx == 3
+        maximumStressAnalysis.tensileLoadFailureMode = 'Tranverse Fiber Compression Failure';
+    elseif tensileFailureColIdx == 4
+        maximumStressAnalysis.tensileLoadFailureMode = 'Transverse Fiber Tension Failure';
+    elseif tensileFailureColIdx == 5
+        maximumStressAnalysis.tensileLoadFailureMode = 'Shear Failure';
+    elseif tensileFailureColIdx == 6
+        maximumStressAnalysis.tensileLoadFailureMode = 'Shear Failure';
+    end
+
+    if compressiveFailureColIdx == 1
+        maximumStressAnalysis.compressiveLoadFailureMode = 'Fiber Direction Compression Failure';
+    elseif compressiveFailureColIdx == 2
+        maximumStressAnalysis.compressiveLoadFailureMode = 'Fiber Direction Tension Failure';
+    elseif compressiveFailureColIdx == 3
+        maximumStressAnalysis.compressiveLoadFailureMode = 'Tranverse Fiber Compression Failure';
+    elseif compressiveFailureColIdx == 4
+        maximumStressAnalysis.compressiveLoadFailureMode = 'Transverse Fiber Tension Failure';
+    elseif compressiveFailureColIdx == 5
+        maximumStressAnalysis.compressiveLoadFailureMode = 'Shear Failure';
+    elseif compressiveFailureColIdx == 6
+        maximumStressAnalysis.compressiveLoadFailureMode = 'Shear Failure';
+    end
+
+    % Storing Results
+    maximumStressAnalysis.tensileFailureLoad = tensileFailureLoad;
+    maximumStressAnalysis.compressiveFailureLoad = compressiveFailureLoad;
+    maximumStressAnalysis.failedLayerTensile = failedLayerTensile;
+    maximumStressAnalysis.failedLayerCompressive = failedLayerCompressive;
+
+    % Displaying Failure Loads and Failure Mode
+    disp(' The layer(s) that control failure for a tensile load are: ')
+    disp(failedLayerTensile)
+    disp([' First-Play Failure Tensile Load = ', num2str(tensileFailureLoad), ' Newtons.'])
+    disp([' The failure mode under this tensile load is ', maximumStressAnalysis.tensileLoadFailureMode])
+    disp(' ')
+    disp(' The layer(s) that control failure for a compressive load are: ')
+    disp(failedLayerCompressive)
+    disp([' First-Play Failure Compressive Load = ', num2str(compressiveFailureLoad), ' Newtons.'])
+    disp([' The failure mode under this compressive load is ', maximumStressAnalysis.compressiveLoadFailureMode])
+end

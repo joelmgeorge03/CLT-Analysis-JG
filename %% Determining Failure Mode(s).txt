@@ -1,0 +1,44 @@
+    %% Determining Failure Mode(s)
+    TsaiWuAnalysis.tensileFailureMode = 'Undefined';
+    TsaiWuAnalysis.compressiveFailureMode = 'Undefined';
+
+    % For + P
+    sigma1posP = double(subs(sigma1(tensileFailureIdx,1), P, tensileFailureLoad)); 
+    sigma2posP = double(subs(sigma2(tensileFailureIdx,1), P, tensileFailureLoad));
+    tau12posP = double(subs(tau12(tensileFailureIdx,1), P, tensileFailureLoad));
+
+    posPsigma1contributions = F1.*sigma1posP + F11.*sigma1posP.^2 + (0.5).*(-sqrt(F11.*F22).*sigma1posP.*sigma2posP);
+    posPsigma2contributions = F2.*sigma2posP + F22.*sigma2posP.^2 + (0.5).*(-sqrt(F11.*F22).*sigma1posP.*sigma2posP);
+    posPtau12contributions = F66.*tau12posP;
+
+    posPcontributions = [posPsigma1contributions; posPsigma2contributions; posPtau12contributions];
+
+    % For - P
+    sigma1negP = double(subs(sigma1(compressiveFailureIdx,1), P, compressiveFailureLoad));
+    sigma2negP = double(subs(sigma2(compressiveFailureIdx,1), P, compressiveFailureLoad));
+    tau12negP = double(subs(tau12(compressiveFailureIdx,1), P, compressiveFailureLoad));
+
+    negPsigma1contributions = F1.*sigma1negP + F11.*sigma1negP.^2 + (0.5).*(-sqrt(F11.*F22).*sigma1negP.*sigma2negP);
+    negPsigma2contributions = F2.*sigma2negP + F22.*sigma2negP.^2 + (0.5).*(-sqrt(F11.*F22).*sigma1negP.*sigma2negP);
+    negPtau12contributions = F66.*tau12negP;
+
+    negPcontributions = [negPsigma1contributions; negPsigma2contributions; negPtau12contributions];
+    [~, maxPosPcontributionidx] = max(posPcontributions);
+    
+    if maxPosPcontributionidx == 1
+        TsaiWuAnalysis.tensileFailureMode = 'Fiber Direction Tension Failure';
+    elseif maxPosPcontributionidx == 2
+         TsaiWuAnalysis.tensileFailureMode = 'Transverse Direction Tension Failure';
+    elseif maxPosPcontributionidx == 3
+         TsaiWuAnalysis.tensileFailureMode = 'Shear Failure';
+    end
+     
+    [~, maxNegPcontributionidx] = max(negPcontributions);
+     
+    if maxNegPcontributionidx == 1
+        TsaiWuAnalysis.compressiveFailureMode = 'Fiber Direction Compression Failure';
+    elseif maxNegPcontributionidx == 2
+        TsaiWuAnalysis.compressiveFailureMode = 'Transverse Direction Compression Failure';
+    elseif maxNegPcontributionidx == 3
+        TsaiWuAnalysis.compressiveFailureMode = 'Shear Failure';
+    end
