@@ -91,10 +91,10 @@ function [TsaiWuAnalysis] = TsaiWuv2(laminateAnalysis, principleStrength)
     TsaiWuAnalysis.tensileFailedLayer = tensileFailedLayer;
     TsaiWuAnalysis.compressiveFailedLayer = compressiveFailedLayer;
 
-    disp(" The layer(s) that control failure for a tensile load are: ")
+    disp(" The layer(s) that control failure for a positive load are: ")
     disp(tensileFailedLayer)
 
-    disp(" The layer(s) that control failure for a compressive load are: ")
+    disp(" The layer(s) that control failure for a negative load are: ")
     disp(compressiveFailedLayer)
     
     %% Determining Failure Mode for Tsai-Wu
@@ -144,7 +144,7 @@ function [TsaiWuAnalysis] = TsaiWuv2(laminateAnalysis, principleStrength)
 
     % Creating Table to Displayu Failure Contributions
     TsaiWuAnalysis.failureTable = array2table(failureModeDataArray,...
-        'VariableNames',{'Compressive', 'Tensile'}, ... 
+        'VariableNames',{'Negative Load', 'Positive Load'}, ... 
         'RowNames', {'P',... 
         'Layer',...
         'σ1',...
@@ -162,9 +162,9 @@ function [TsaiWuAnalysis] = TsaiWuv2(laminateAnalysis, principleStrength)
     format short g 
     disp(TsaiWuAnalysis.failureTable)
     disp(' ')
-    disp(['The First-Ply Failure Tensile Load = ', num2str(tensileFailureLoad), ' Newtons/meter. '])
+    disp(['The First-Ply Failure Positive Load = ', num2str(tensileFailureLoad)])
     disp(' ')
-    disp(['The First-Ply Failure Compressive Load = ', num2str(compressiveFailureLoad), ' Newtons/meter. '])
+    disp(['The First-Ply Failure Negative Load = ', num2str(compressiveFailureLoad)])
 
     %% Determining failure mode via code will be added in later. 
 
