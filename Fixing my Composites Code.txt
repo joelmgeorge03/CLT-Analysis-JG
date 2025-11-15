@@ -1,0 +1,9 @@
+Fixing my Composites Code: 
+
+- use analytical/numerical solutions for max stress and Tsai-Wu
+
+- figure out how to solve max stress numerically. I think my code is wrong.
+
+- Tsai-Wu can be solved analytically. Use quadratic equation solution. Maybe derive the quadratic form of Tsai-Wu in terms of P using Mathematica?  
+
+- 

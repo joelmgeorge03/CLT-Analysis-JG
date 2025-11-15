@@ -1,0 +1,112 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 14.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[      3373,        104]
+NotebookOptionsPosition[      2872,         87]
+NotebookOutlinePosition[      3290,        103]
+CellTagsIndexPosition[      3247,        100]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"sigma1", " ", "=", " ", 
+   RowBox[{"\[Sigma]1", "*", "P"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"sigma2", " ", "=", " ", 
+   RowBox[{"\[Sigma]2", "*", "P"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"tau12", " ", "=", " ", 
+    RowBox[{"\[Tau]12", "*", "P"}]}], ";"}], " ", "\n"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"TsaiWu", " ", "=", " ", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"F11", "*", 
+       SuperscriptBox["sigma1", "2"]}], " ", "+", " ", 
+      RowBox[{"F22", "*", 
+       SuperscriptBox["sigma2", "2"]}], " ", "+", " ", 
+      RowBox[{"F66", "*", 
+       SuperscriptBox["tau12", "2"]}], " ", "-", " ", 
+      RowBox[{
+       SqrtBox[
+        RowBox[{"F11", "*", "F22"}]], "*", "sigma1", "*", "sigma2"}], " ", "+",
+       " ", 
+      RowBox[{"F1", "*", "sigma1"}], " ", "+", " ", 
+      RowBox[{"F2", "*", "sigma2"}], " ", "-", " ", "1"}], " ", "==", " ", 
+     "0"}]}], ";"}], "\n"}], "\n", 
+ RowBox[{"Collect", "[", 
+  RowBox[{"TsaiWu", ",", "P"}], "]"}]}], "Code",
+ CellChangeTimes->{{3.9721280590814114`*^9, 3.9721280594515705`*^9}, {
+  3.9721281013745403`*^9, 3.972128218018076*^9}, {3.972128328875719*^9, 
+  3.972128393749529*^9}, {3.972130000463806*^9, 3.972130007104889*^9}},
+ CellLabel->"In[39]:=",ExpressionUUID->"3c0abe27-cea1-c446-8162-00ee80da3198"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"-", "1"}], "+", 
+   RowBox[{"P", " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"F1", " ", "\[Sigma]1"}], "+", 
+      RowBox[{"F2", " ", "\[Sigma]2"}]}], ")"}]}], "+", 
+   RowBox[{
+    SuperscriptBox["P", "2"], " ", 
+    RowBox[{"(", 
+     RowBox[{
+      RowBox[{"F11", " ", 
+       SuperscriptBox["\[Sigma]1", "2"]}], "-", 
+      RowBox[{
+       SqrtBox[
+        RowBox[{"F11", " ", "F22"}]], " ", "\[Sigma]1", " ", "\[Sigma]2"}], "+", 
+      RowBox[{"F22", " ", 
+       SuperscriptBox["\[Sigma]2", "2"]}], "+", 
+      RowBox[{"F66", " ", 
+       SuperscriptBox["\[Tau]12", "2"]}]}], ")"}]}]}], "\[Equal]", 
+  "0"}]], "Output",
+ CellChangeTimes->{{3.9721281963996506`*^9, 3.972128218879328*^9}, {
+   3.9721283324401054`*^9, 3.9721283496338406`*^9}, {3.972128380927372*^9, 
+   3.972128396790943*^9}, 3.972130012707449*^9},
+ CellLabel->"Out[43]=",ExpressionUUID->"b45ebc8a-6cc2-494c-b9b7-159dfb60130c"]
+}, Open  ]]
+},
+WindowSize->{574.8, 645.6},
+WindowMargins->{{Automatic, -4.7999999999999545`}, {Automatic, 0}},
+FrontEndVersion->"14.3 for Microsoft Windows (64-bit) (July 8, 2025)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"79fcc211-0337-5047-98e5-b1f3a28f2d66"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[576, 22, 1324, 34, 157, "Code",ExpressionUUID->"3c0abe27-cea1-c446-8162-00ee80da3198"],
+Cell[1903, 58, 953, 26, 54, "Output",ExpressionUUID->"b45ebc8a-6cc2-494c-b9b7-159dfb60130c"]
+}, Open  ]]
+}
+]
+*)
+

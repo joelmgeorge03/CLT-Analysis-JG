@@ -76,12 +76,12 @@ function [TsaiWuAnalysis] = TsaiWu(laminateAnalysis, principleStrength)
     tensileFailedLayer = layerNum(tensileFailureIdx,1);
     compressiveFailedLayer = layerNum(compressiveFailureIdx,1);
 
-    disp(" The layers that control failure for a tensile load are: ")
+    disp(" The layer(s) that control failure for a tensile load are: ")
     disp(tensileFailedLayer)
 
-    disp(" The layers that control failure for a compressive load are: ")
+    disp(" The layer(s) that control failure for a compressive load are: ")
     disp(compressiveFailedLayer)
-
+    disp("")
     % Storing Failed Layers
     TsaiWuAnalysis.tensileFailedLayer = tensileFailedLayer;
     TsaiWuAnalysis.compressiveFailedLayer = compressiveFailedLayer;

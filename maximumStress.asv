@@ -58,14 +58,14 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     [tensileFailureRowIdx, tensileFailureColIdx] = find(failureLoads == tensileFailureLoad, 1, 'first');
     [compressiveFailureRowIdx, compressiveFailureColIdx] = find(failureLoads == compressiveFailureLoad, 1, 'first');
 
-    [tensileFailureRowIdxList, ~] = find(failureLoads == tensileFailureLoad);
-    [compressiveFailureRowIdxList, ~] = find(failureLoads == compressiveFailureLoad);
+    [tensileFailureRowIdxList, tensileFailureColIdx] = find(failureLoads == tensileFailureLoad, 1, 'first');
+    [compressiveFailureRowIdx, compressiveFailureColIdx] = find(failureLoads == compressiveFailureLoad, 1, 'first');
 
     failedLayerTensile = layerNum(tensileFailureRowIdx,1);
     failedLayerCompressive = layerNum(compressiveFailureRowIdx,1);
 
-    failedLayerTensileList = layerNum(tensileFailureRowIdxList,1);
-    failedLayerCompressiveList = layerNum(compressiveFailureRowIdxList,1);
+    failedLayerTensileList = layerNum(tensileFailureRowIdx,1);
+    failedLayerCompressiveList = layerNum(compressiveFailureRowIdx,1);
 
     maximumStressAnalysis.tensileLoadFailureMode = 'Undefined';
     maximumStressAnalysis.compressiveLoadFailureMode = 'Undefined';
@@ -107,12 +107,12 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
 
     % Displaying Failure Loads and Failure Mode
     disp(' The layer(s) that control failure for a tensile load are: ')
-    disp(failedLayerTensileList)
-    disp([' First-Ply Failure Tensile Load = ', num2str(tensileFailureLoad), ' Newtons/meter.'])
+    disp(failedLayerTensile)
+    disp([' First-Play Failure Tensile Load = ', num2str(tensileFailureLoad), ' Newtons/meter.'])
     disp([' The failure mode under this tensile load is ', maximumStressAnalysis.tensileLoadFailureMode])
     disp(' ')
     disp(' The layer(s) that control failure for a compressive load are: ')
-    disp(failedLayerCompressiveList)
-    disp([' First-Ply Failure Compressive Load = ', num2str(compressiveFailureLoad), ' Newtons/meter.'])
+    disp(failedLayerCompressive)
+    disp([' First-Play Failure Compressive Load = ', num2str(compressiveFailureLoad), ' Newtons/meter.'])
     disp([' The failure mode under this compressive load is ', maximumStressAnalysis.compressiveLoadFailureMode])
 end
