@@ -10,5 +10,5 @@ function [betaMatrix] = MoistureDeformCoeff(properties, theta)
     betay = beta1.*n.^2 + beta2.*m.^2;
     betaxy = 2.*(beta1 - beta2).*m.*n;
 
-    betaMatrix = [betax betay betaxy];
+    betaMatrix = [betax betay betaxy]';
 end

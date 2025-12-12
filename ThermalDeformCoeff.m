@@ -10,5 +10,5 @@ function [alphaMatrix] = ThermalDeformCoeff(properties, theta)
     alphay = alpha1.*n.^2 + alpha2.*m.^2;
     alphaxy = 2.*(alpha1 - alpha2).*m.*n;
 
-    alphaMatrix = [alphax alphay alphaxy];
+    alphaMatrix = [alphax alphay alphaxy]';
 end

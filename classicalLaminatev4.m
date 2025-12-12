@@ -1,4 +1,4 @@
-function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThickness, midSurfStrains, forceResultants )
+function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThickness, midSurfStrains, forceResultants, deltaT, deltaM )
 
     % Computing the z-coordinates for the layer interfaces
     N = length(angleVec); % Extracting number of layers
@@ -14,6 +14,23 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     Amat = zeros(3,3); % Initializing A matrix
     Bmat = zeros(3,3); % Initializing B matrix
     Dmat = zeros(3,3); % Initializing D matrix
+
+    % Initialzing Unit Thermal Stress Resultants
+    Nxhat_T = 0;
+    Nyhat_T = 0;
+    Nxyhat_T = 0;
+    Mxhat_T = 0;
+    Myhat_T = 0;
+    Mxyhat_T = 0;
+
+    % Initializing Unit Moisture Stress Resultants
+    Nxhat_M = 0;
+    Nyhat_M = 0;
+    Nxyhat_M = 0;
+    Mxhat_M = 0;
+    Myhat_M = 0;
+    Mxyhat_M = 0;   
+
     zk = zCoord(2:end); % from second to last coordinates
     zkMinus1 = zCoord(1:end-1); % from first to second-to-last coordinates
     dz = zk - zkMinus1; % term used to calculate A matrices
@@ -23,12 +40,30 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     for plyIdx = 1:N
         theta = angleVec(plyIdx); % extracting the orientation angle
         QbarLayer(:,:,plyIdx) = TransformedRSM(properties, theta); % Using Qbar function
-        alphaLayerXYZ(:,plyIdx) = ThermalDeformCoeff(properties, theta); % Using Alpha function 
-        betaLayerXYZ(:,plyIdx) = MoistureDeformCoeff(properties, theta); % Using Beta function
+        alphaLayerXYZ(:,1,plyIdx) = ThermalDeformCoeff(properties, theta); % Using Alpha function 
+        betaLayerXYZ(:,1,plyIdx) = MoistureDeformCoeff(properties, theta); % Using Beta function
 
         Amat = Amat + QbarLayer(:,:,plyIdx)*dz(plyIdx); % A matrix - computed for each layer and then summed for all layers. 
         Bmat = Bmat + (1/2)*QbarLayer(:,:,plyIdx)*dzSquared(plyIdx); % B matrix - computed for each layer and then summed for all layers.
         Dmat = Dmat + (1/3)*QbarLayer(:,:,plyIdx)*dzCubed(plyIdx); % D matrix - computed for each layer and then summed for all layers.
+
+        % Computing Unit Thermal Stress Resultants for each layer, then summed for all layers.
+        Nxhat_T = Nxhat_T + ( QbarLayer(1,1,plyIdx)*alphaLayerXYZ(1,1,plyIdx) + QbarLayer(1,2,plyIdx)*alphaLayerXYZ(2,1,plyIdx) + QbarLayer(1,3,plyIdx)*alphaLayerXYZ(3,1,plyIdx) )*dz(plyIdx);
+        Nyhat_T = Nyhat_T + ( QbarLayer(2,1,plyIdx)*alphaLayerXYZ(1,1,plyIdx) + QbarLayer(2,2,plyIdx)*alphaLayerXYZ(2,1,plyIdx) + QbarLayer(2,3,plyIdx)*alphaLayerXYZ(3,1,plyIdx) )*dz(plyIdx);
+        Nxyhat_T = Nxyhat_T + ( QbarLayer(3,1,plyIdx)*alphaLayerXYZ(1,1,plyIdx) + QbarLayer(3,2,plyIdx)*alphaLayerXYZ(2,1,plyIdx) + QbarLayer(3,3,plyIdx)*alphaLayerXYZ(3,1,plyIdx) )*dz(plyIdx);
+
+        Mxhat_T = Mxhat_T + 0.5*( QbarLayer(1,1,plyIdx)*alphaLayerXYZ(1,1,plyIdx) + QbarLayer(1,2,plyIdx)*alphaLayerXYZ(2,1,plyIdx) + QbarLayer(1,3,plyIdx)*alphaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
+        Myhat_T = Myhat_T + 0.5*( QbarLayer(2,1,plyIdx)*alphaLayerXYZ(1,1,plyIdx) + QbarLayer(2,2,plyIdx)*alphaLayerXYZ(2,1,plyIdx) + QbarLayer(2,3,plyIdx)*alphaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
+        Mxyhat_T = Mxyhat_T + 0.5*( QbarLayer(3,1,plyIdx)*alphaLayerXYZ(1,1,plyIdx) + QbarLayer(3,2,plyIdx)*alphaLayerXYZ(2,1,plyIdx) + QbarLayer(3,3,plyIdx)*alphaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
+
+        % Computing Unit Moisture Stress Resultants for each layer, then summed for all layers 
+        Nxhat_M = Nxhat_M + ( QbarLayer(1,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(1,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(1,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dz(plyIdx);
+        Nyhat_M = Nyhat_M + ( QbarLayer(2,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(2,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(2,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dz(plyIdx);
+        Nxyhat_M = Nxyhat_M + ( QbarLayer(3,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(3,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(3,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dz(plyIdx);
+
+        Mxhat_M = Mxhat_M + 0.5*( QbarLayer(1,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(1,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(1,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
+        Myhat_M = Myhat_M + 0.5*( QbarLayer(2,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(2,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(2,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
+        Mxyhat_M = Mxyhat_M + 0.5*( QbarLayer(3,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(3,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(3,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
 
         % Displaying Per-Ply Properties
         format short g
@@ -70,6 +105,22 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     LaminateResults.b = bmat;
     LaminateResults.d = dmat;
 
+    % Storing Unit Thermal Stress Resultants
+    LaminateResults.Nxhat_T = Nxhat_T;
+    LaminateResults.Nyhat_T = Nyhat_T;
+    LaminateResults.Nxyhat_T = Nxyhat_T;
+    LaminateResults.Mxhat_T = Mxhat_T;
+    LaminateResults.Myhat_T = Myhat_T;
+    LaminateResults.Mxyhat_T = Mxyhat_T;
+
+    % Storing Unit Moisture Stress Resultants
+    LaminateResults.Nxhat_M = Nxhat_M;
+    LaminateResults.Nyhat_M = Nyhat_M;
+    LaminateResults.Nxyhat_M = Nxyhat_M;
+    LaminateResults.Mxhat_M = Mxhat_M;
+    LaminateResults.Myhat_M = Myhat_M;
+    LaminateResults.Mxyhat_M = Mxyhat_M;
+
     % Calculating Effective Engineering Properties
     Ebarx = (Amat(1,1).*Amat(2,2) - Amat(1,2).^2)/(Amat(2,2).*H) ;
     Ebary = (Amat(1,1).*Amat(2,2) - Amat(1,2).^2)/(Amat(1,1).*H) ;
@@ -83,6 +134,26 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     LaminateResults.Gbarxy = Gbarxy;
     LaminateResults.vbarxy = vbarxy;
     LaminateResults.vbaryx = vbaryx;
+
+    % Printing the Unit Thermal and Moisture Resultants
+    format short g
+    fprintf('------ Unit Thermal Stress Resultants ------\n')
+    fprintf('Nxhat_T = %.3f\n', Nxhat_T)
+    fprintf('Nyhat_T = %.3f\n', Nyhat_T)
+    fprintf('Nxyhat_T = %.3f\n', Nxyhat_T)
+    fprintf('Mxhat_T = %.3f\n', Mxhat_T)
+    fprintf('Myhat_T = %.3f\n', Myhat_T)
+    fprintf('Mxyhat_T = %.3f\n', Mxyhat_T)
+    fprintf('\n')    
+
+    fprintf('------ Unit Moisture Stress Resultants ------\n')
+    fprintf('Nxhat_M = %.3f\n', Nxhat_M)
+    fprintf('Nyhat_M = %.3f\n', Nyhat_M)
+    fprintf('Nxyhat_M = %.3f\n', Nxyhat_M)
+    fprintf('Mxhat_M = %.3f\n', Mxhat_M)
+    fprintf('Myhat_M = %.3f\n', Myhat_M)
+    fprintf('Mxyhat_M = %.3f\n', Mxyhat_M)
+    fprintf('\n')
 
     % Printing ABD and abd matrices
     format short g
@@ -112,6 +183,26 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     fprintf('WARNING: THESE EFFECTIVE PROPERTIES ARE ONLY VALID FOR BALANCED, SYMMETRIC LAMINATES! \n')
     fprintf('\n')
 
+%% Computing Midsurface Strains/Stresses
+
+    % Computing Thermal and Moisture Effects
+    % Use Equation 11.69 from Hyer
+    Nx_T = Nxhat_T*deltaT;
+    Ny_T = Nyhat_T*deltaT;
+    Nxy_T = Nxyhat_T*deltaT;
+    Mx_T = Mxhat_T*deltaT;
+    My_T = Myhat_T*deltaT;
+    Mxy_T = Mxyhat_T*deltaT;
+
+    Nx_M = Nxhat_M*deltaM;
+    Ny_M = Nyhat_M*deltaM;
+    Nxy_M = Nxyhat_M*deltaM;
+    Mx_M = Mxhat_M*deltaM;
+    My_M = Myhat_M*deltaM;
+    Mxy_M = Mxyhat_M*deltaM;
+
+    % Branch 1: Known Midsurface Strains, Unknown Force and Moment
+    % Resultants
     if all(isnan(struct2array(forceResultants))) % If the force resultants are not given/unkown
         % Extracting specified midsurface strains from input structure
         eps_x0 = midSurfStrains.eps_x0; 
@@ -149,6 +240,25 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         fprintf(' My = %d\n', momentvec(2));
         fprintf(' Mxy = %d\n', momentvec(3));
 
+        % Display Thermal Forces and Moments
+        fprintf('----------------------- Thermal Forces and Moments -----------------------\n')
+        fprintf(' NxT = %d\n', Nx_T);
+        fprintf(' NyT = %d\n', Ny_T);
+        fprintf(' NxyT = %d\n', Nxy_T);
+        fprintf(' MxT = %d\n', Mx_T);
+        fprintf(' MyT = %d\n', My_T);
+        fprintf(' MxyT = %d\n', Mxy_T);
+
+        % Display Moisture Forces and Moments
+        fprintf('----------------------- Moisture Forces and Moments -----------------------\n')
+        fprintf(' NxM = %d\n', Nx_M);
+        fprintf(' NyM = %d\n', Ny_M);
+        fprintf(' NxyM = %d\n', Nxy_M);
+        fprintf(' MxM = %d\n', Mx_M);
+        fprintf(' MyM = %d\n', My_M);
+        fprintf(' MxyM = %d\n', Mxy_M);
+
+    % Branch 2: Known Stress Resultants, Unknown Midsurface Strains
     elseif all(isnan(struct2array(midSurfStrains))) % if the midsurface strains/curvatures are not given/unknown
         % Extracting specified force resultants from input structure
         N_x = forceResultants.N_x;
@@ -158,12 +268,13 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         M_y = forceResultants.M_y;
         M_xy = forceResultants.M_xy;
 
-        forceMoment = [N_x;
-                 N_y;
-                 N_xy;
-                 M_x;
-                 M_y;
-                 M_xy;];
+        % Using Equation 11.66 from Hyer to include thermal and moisture effects
+        forceMoment = [N_x + Nx_T + Nx_M;
+                       N_y + Ny_T + Ny_M;
+                       N_xy + Nxy_T + Nxy_M;
+                       M_x + Mx_T + Mx_M;
+                       M_y + My_T + My_M;
+                       M_xy + Mxy_T + Mxy_M;];
         
         epsilonKappa0 = abdmat*forceMoment;
         eps0vecXYZ = epsilonKappa0(1:3); % use this for later calculations
@@ -189,6 +300,25 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         fprintf(' Kxy0 = %g\n', KvecXYZ(3));
         fprintf('\n')
 
+        % Display Thermal Forces and Moments
+        fprintf('----------------------- Thermal Forces and Moments -----------------------\n')
+        fprintf(' NxT = %d\n', Nx_T);
+        fprintf(' NyT = %d\n', Ny_T);
+        fprintf(' NxyT = %d\n', Nxy_T);
+        fprintf(' MxT = %d\n', Mx_T);
+        fprintf(' MyT = %d\n', My_T);
+        fprintf(' MxyT = %d\n', Mxy_T);
+
+        % Display Moisture Forces and Moments
+        fprintf('----------------------- Moisture Forces and Moments -----------------------\n')
+        fprintf(' NxM = %d\n', Nx_M);
+        fprintf(' NyM = %d\n', Ny_M);
+        fprintf(' NxyM = %d\n', Nxy_M);
+        fprintf(' MxM = %d\n', Mx_M);
+        fprintf(' MyM = %d\n', My_M);
+        fprintf(' MxyM = %d\n', Mxy_M);
+    
+    % Branch 3: If Neither ForceResultants or midSurfStrains are specified.
     elseif all(isnan(struct2array(forceResultants))) && all(isnan(struct2array(midSurfStrains)))
         % This is just for a case where I want the code to just compute the
         % ABD and abd matrices for a particular laminate
@@ -199,35 +329,39 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         error('ERROR: ONLY SPECIFY EITHER FORCES AND MOMENTS OR MIDSURFACE STRAINS AND CURVATURES.')
     end
 
-    % Starting per Layer Computations (Strains and Stresses)
-    epsLayerInterfaceXYZ = zeros(3, N+1); % epsilon_x, epsilon_y, gamma_xy between each ply
-    epsLayerXYZ = zeros(3,2,N); % per layer, both top and bottom surface strains in XYZ
+%% Starting per Layer Computations (Strains and Stresses)
+    
+    epsLayerXYZ = zeros(3,2,N); % per layer, both top and bottom surface Total strains in XYZ
     sigmaLayerXYZ = zeros(3,2,N); % per layer, both top and bottom surface stresses in XYZ
+
+    epsLayerXYZ_mech = zeros(3,2,N); % per layer, both top and bottom surface mechanical strains in XYZ
 
     epsLayer123 = zeros(3,2,N); % per layer, both top and bottom surface strains in 123
     sigmaLayer123 = zeros(3,2,N); % per layer, both top and bottom surface stresses in 123
 
-    % Compute strains in XYZ coordinate system at each layer interface
-    for InterfaceIdx = 1:N+1
-        z = zCoord(InterfaceIdx);
-        epsLayerInterfaceXYZ(:,InterfaceIdx) = eps0vecXYZ + z.*KvecXYZ; % computes epsilon_x, y, and gamma_xy
-    end
+%% Compute strains in XYZ coordinate system at each layer interface
 
-    % Compute epsilon and sigma for each layer
+    % Compute epsilon and sigma for each layer at its top and bottom
     for plyIdx = 1:N
         theta = angleVec(plyIdx); % extracting the orientation angle
         
         % Top and Bottom Layer Calculations
         plyIdxTop = plyIdx; % Index of ply top surface
         plyIdxBot = plyIdx + 1; % Index of ply bottom surface 
+        zTop = zCoord(plyIdxTop); % zCoord of top surface
+        zBot = zCoord(plyIdxBot);  % zCoord of bottom surface
 
-        % Strains in XYZ
-        epsLayerXYZ(:,1,plyIdx) = epsLayerInterfaceXYZ(:, plyIdxTop); % Top Surface
-        epsLayerXYZ(:,2,plyIdx) = epsLayerInterfaceXYZ(:,plyIdxBot); % Bottom Surface
+        % Total Strains in XYZ
+        epsLayerXYZ(:,1,plyIdx) = eps0vecXYZ + zTop.*KvecXYZ; % Top Surface
+        epsLayerXYZ(:,2,plyIdx) = eps0vecXYZ + zBot.*KvecXYZ; % Bottom Surface
+        
+        % Mechanical Strains in XYZ
+        epsLayerXYZ_mech(:,1,plyIdx) = eps0vecXYZ + zTop.*KvecXYZ - alphaLayerXYZ(:,1,plyIdx)*deltaT - betaLayerXYZ(:,1,plyIdx)*deltaM ; % Top Surface
+        epsLayerXYZ_mech(:,2,plyIdx) = eps0vecXYZ + zBot.*KvecXYZ - alphaLayerXYZ(:,1,plyIdx)*deltaT - betaLayerXYZ(:,1,plyIdx)*deltaM ; % Bottom Surface
 
         % Stresses in XYZ
-        sigmaLayerXYZ(:,1,plyIdx) = QbarLayer(:,:,plyIdx)*epsLayerXYZ(:,1,plyIdx); % Top Surface
-        sigmaLayerXYZ(:,2,plyIdx) = QbarLayer(:,:,plyIdx)*epsLayerXYZ(:,2,plyIdx); % Bottom Surface
+        sigmaLayerXYZ(:,1,plyIdx) = QbarLayer(:,:,plyIdx)*epsLayerXYZ_mech(:,1,plyIdx); % Top Surface
+        sigmaLayerXYZ(:,2,plyIdx) = QbarLayer(:,:,plyIdx)*epsLayerXYZ_mech(:,2,plyIdx); % Bottom Surface
 
         % Transforming Strains in XYZ to 123
         m = cosd(theta);
