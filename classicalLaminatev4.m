@@ -1,4 +1,88 @@
-function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThickness, midSurfStrains, forceResultants, deltaT, deltaM )
+function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThickness, midSurfStrains, forceResultants, deltaT, deltaM, printOpts)
+
+    % Improving usability and making print statements silent by default. 
+    % If printed outputs are desired, then it must be specfied via the
+    % printOpts input
+
+    % By default, nothing prints to the command window
+    defaultOpts.type = false;
+    defaultOpts.perPly = false;
+    defaultOpts.thermalMoisture = false;
+    defaultOpts.ABD = false;
+    defaultOpts.engProps = false;
+    defaultOpts.appLoads = false;
+    defaultOpts.appStrains = false;
+    defaultOpts.strainXYZ = false;
+    defaultOpts.stressXYZ = false;
+    defaultOpts.strain123 = false;
+    defaultOpts.stress123 = false;
+
+    % The following check is used to make this code backwards compatible
+    % with previous implementations of this code that did not have
+    % printOpts
+
+    if nargin < 8
+        fields = fieldnames(defaultOpts);
+        for i = 1:length(fields)
+            printOpts.(fields{i}) = true;
+        end
+    elseif isempty(printOpts)
+        printOpts = defaultOpts;
+    else
+        fields = fieldnames(defaultOpts);
+        for i = 1:length(fields)
+            if ~isfield(printOpts, fields{i})
+                printOpts.(fields{i}) = false;
+            end
+        end
+    end
+    
+    % Evaluating the laminate sequence
+    
+    % Symmetry check: 
+    isSymmetric = isequal(angleVec, fliplr(angleVec) );
+
+    % Balanced check:
+    isBalanced = false; % default assumption
+    uniquePly = unique(abs(angleVec)); % find unique angles
+    for i = 1:length(uniquePly)
+        plyAngle = uniquePly(i);
+        if plyAngle == 0 || plyAngle == 90
+            continue; % these angles do not affect laminate balance
+        end
+        nPositive = sum(angleVec == plyAngle);
+        nNegative = sum(angleVec == -plyAngle);
+        if nPositive == nNegative
+            isBalanced = true;
+            break;
+        end
+    end
+
+    disp(' ')
+    disp('====================================================')
+    disp('            LAMINATE ANALYISIS RESULTS              ')
+    disp('====================================================')
+    % Classifying the laminate
+    if isSymmetric && isBalanced
+        laminateType = 'Balanced-Symmetric';
+    elseif isSymmetric
+        laminateType = 'Symmetric';
+    elseif isBalanced
+        laminateType = 'Balanced';
+    else 
+        laminateType = 'Not balanced or symmetric';
+    end
+
+    % Storing laminate classification
+    LaminateResults.type = laminateType;
+
+    % Printing Result
+    if printOpts.type
+        fprintf('\n')
+        fprintf('---------- Laminate Classification ----------\n')
+        fprintf('Type: %s\n', laminateType)
+        fprintf('\n')
+    end
 
     % Computing the z-coordinates for the layer interfaces
     N = length(angleVec); % Extracting number of layers
@@ -66,18 +150,20 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         Mxyhat_M = Mxyhat_M + 0.5*( QbarLayer(3,1,plyIdx)*betaLayerXYZ(1,1,plyIdx) + QbarLayer(3,2,plyIdx)*betaLayerXYZ(2,1,plyIdx) + QbarLayer(3,3,plyIdx)*betaLayerXYZ(3,1,plyIdx) )*dzSquared(plyIdx);
 
         % Displaying Per-Ply Properties
-        format short g
-        fprintf('--- Ply %d ---\n', plyIdx);
-        fprintf('Orientation: %d°\n', theta);
-        fprintf('[Qbar] = \n'); disp(QbarLayer(:,:,plyIdx));
-        fprintf('α_x: %.3e\n',alphaLayerXYZ(1,1,plyIdx));
-        fprintf('α_y: %.3e\n', alphaLayerXYZ(2,1,plyIdx));
-        fprintf('α_xy: %.3e\n', alphaLayerXYZ(3,1,plyIdx));
-        fprintf('β_x: %.3e\n',betaLayerXYZ(1,1,plyIdx));
-        fprintf('β_y: %.3e\n',betaLayerXYZ(2,1,plyIdx));
-        fprintf('β_xy: %.3e\n',betaLayerXYZ(3,1,plyIdx));
-        fprintf('\n')
-        format short
+        if printOpts.perPly
+            format short g
+            fprintf('--- Ply %d ---\n', plyIdx);
+            fprintf('Orientation: %d°\n', theta);
+            fprintf('[Qbar] = \n'); disp(QbarLayer(:,:,plyIdx));
+            fprintf('α_x: %.3e\n',alphaLayerXYZ(1,1,plyIdx));
+            fprintf('α_y: %.3e\n', alphaLayerXYZ(2,1,plyIdx));
+            fprintf('α_xy: %.3e\n', alphaLayerXYZ(3,1,plyIdx));
+            fprintf('β_x: %.3e\n',betaLayerXYZ(1,1,plyIdx));
+            fprintf('β_y: %.3e\n',betaLayerXYZ(2,1,plyIdx));
+            fprintf('β_xy: %.3e\n',betaLayerXYZ(3,1,plyIdx));
+            fprintf('\n')
+            format short
+        end
     end
     
     % Storing Layer Results
@@ -136,53 +222,64 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     LaminateResults.vbaryx = vbaryx;
 
     % Printing the Unit Thermal and Moisture Resultants
-    format short g
-    fprintf('------ Unit Thermal Stress Resultants ------\n')
-    fprintf('Nxhat_T = %.3f\n', Nxhat_T)
-    fprintf('Nyhat_T = %.3f\n', Nyhat_T)
-    fprintf('Nxyhat_T = %.3f\n', Nxyhat_T)
-    fprintf('Mxhat_T = %.3f\n', Mxhat_T)
-    fprintf('Myhat_T = %.3f\n', Myhat_T)
-    fprintf('Mxyhat_T = %.3f\n', Mxyhat_T)
-    fprintf('\n')    
-
-    fprintf('------ Unit Moisture Stress Resultants ------\n')
-    fprintf('Nxhat_M = %.3f\n', Nxhat_M)
-    fprintf('Nyhat_M = %.3f\n', Nyhat_M)
-    fprintf('Nxyhat_M = %.3f\n', Nxyhat_M)
-    fprintf('Mxhat_M = %.3f\n', Mxhat_M)
-    fprintf('Myhat_M = %.3f\n', Myhat_M)
-    fprintf('Mxyhat_M = %.3f\n', Mxyhat_M)
-    fprintf('\n')
-
+    if printOpts.thermalMoisture
+        format short g
+        fprintf('------ Unit Thermal Stress Resultants ------\n')
+        fprintf('Nxhat_T = %.3f\n', Nxhat_T)
+        fprintf('Nyhat_T = %.3f\n', Nyhat_T)
+        fprintf('Nxyhat_T = %.3f\n', Nxyhat_T)
+        fprintf('Mxhat_T = %.3f\n', Mxhat_T)
+        fprintf('Myhat_T = %.3f\n', Myhat_T)
+        fprintf('Mxyhat_T = %.3f\n', Mxyhat_T)
+        fprintf('\n')    
+    
+        fprintf('------ Unit Moisture Stress Resultants ------\n')
+        fprintf('Nxhat_M = %.3f\n', Nxhat_M)
+        fprintf('Nyhat_M = %.3f\n', Nyhat_M)
+        fprintf('Nxyhat_M = %.3f\n', Nxyhat_M)
+        fprintf('Mxhat_M = %.3f\n', Mxhat_M)
+        fprintf('Myhat_M = %.3f\n', Myhat_M)
+        fprintf('Mxyhat_M = %.3f\n', Mxyhat_M)
+        fprintf('\n')
+        format short
+    end
+    
     % Printing ABD and abd matrices
-    format short g
-    fprintf('----------------------- [ABD] -----------------------\n')
-    fprintf('[A] = \n'); disp(Amat);
-    fprintf('[B] = \n'); disp(Bmat);
-    fprintf('[D] = \n'); disp(Dmat);
-    fprintf('[ABD] = \n'); disp(ABDmat);
-    fprintf('\n')
-    fprintf('----------------------- [abd] -----------------------\n')
-    fprintf('[a] = \n'); disp(amat);
-    fprintf('[b] = \n'); disp(bmat);
-    fprintf('[d] = \n'); disp(dmat);
-    fprintf('[abd] = \n'); disp(abdmat);
-    fprintf('\n')
-    format short
-
+    if printOpts.ABD
+        format short g
+        fprintf('----------------------- [ABD] -----------------------\n')
+        fprintf('[A] = \n'); disp(Amat);
+        fprintf('[B] = \n'); disp(Bmat);
+        fprintf('[D] = \n'); disp(Dmat);
+        fprintf('[ABD] = \n'); disp(ABDmat);
+        fprintf('\n')
+        fprintf('----------------------- [abd] -----------------------\n')
+        fprintf('[a] = \n'); disp(amat);
+        fprintf('[b] = \n'); disp(bmat);
+        fprintf('[d] = \n'); disp(dmat);
+        fprintf('[abd] = \n'); disp(abdmat);
+        fprintf('\n')
+        format short
+    end 
+    
     % Printing Effective Engineering Properties
-    format short g
-    fprintf('------ Effective Engineering Properties ------\n')
-    fprintf('Ebarx = %.3e\n', Ebarx)
-    fprintf('Ebary = %.3e\n', Ebary)
-    fprintf('Gbarxy = %.3e\n', Gbarxy)
-    fprintf('vbarxy = %.3e\n', vbarxy)
-    fprintf('vbaryx = %.3e\n', vbaryx)
-    fprintf('\n')
-    fprintf('WARNING: THESE EFFECTIVE PROPERTIES ARE ONLY VALID FOR BALANCED, SYMMETRIC LAMINATES! \n')
-    fprintf('\n')
-
+    if printOpts.engProps
+        format short g
+        fprintf('------ Effective Engineering Properties ------\n')
+        fprintf('Ebarx = %.3e\n', Ebarx)
+        fprintf('Ebary = %.3e\n', Ebary)
+        fprintf('Gbarxy = %.3e\n', Gbarxy)
+        fprintf('vbarxy = %.3e\n', vbarxy)
+        fprintf('vbaryx = %.3e\n', vbaryx)
+        fprintf('\n')
+        format short
+        if isBalanced && isSymmetric
+           fprintf('NOTE: THESE EFFECTIVE PROPERTIES ARE VALID FOR THIS LAMINATE. \n')
+        else
+            fprintf('WARNING: THESE EFFECTIVE PROPERTIES ARE NOT VALID FOR THIS LAMINATE. \n')
+        end
+   
+    end
 %% Computing Midsurface Strains/Stresses
 
     % Computing Thermal and Moisture Effects
@@ -201,9 +298,19 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     My_M = Myhat_M*deltaM;
     Mxy_M = Mxyhat_M*deltaM;
 
-    % Branch 1: Known Midsurface Strains, Unknown Force and Moment
+
+    % Branch 1: If Neither ForceResultants or midSurfStrains are specified.
+    if all(isnan(struct2array(forceResultants))) && all(isnan(struct2array(midSurfStrains)))
+        % This is just for a case where I want the code to just compute the
+        % ABD and abd matrices for a particular laminate
+        eps0vecXYZ = zeros(3,1);
+        KvecXYZ = zeros(3,1);
+        if printOpts.ABD
+            disp("WARNING: THE CODE IS ONLY COMPUTING [ABD] AND [abd] MATRICES. IGNORE STRESS AND STRAIN RESULTS.")
+        end
+    % Branch 2: Known Midsurface Strains, Unknown Force and Moment
     % Resultants
-    if all(isnan(struct2array(forceResultants))) % If the force resultants are not given/unkown
+    elseif all(isnan(struct2array(forceResultants))) % If the force resultants are not given/unkown
         % Extracting specified midsurface strains from input structure
         eps_x0 = midSurfStrains.eps_x0; 
         eps_y0 = midSurfStrains.eps_y0;
@@ -222,43 +329,45 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         momentvec = forceMoment(4:6);
 
         % Display Applied Mid-Surface Strains and Curvatures
-        fprintf('----------------------- Applied Mid-Surface Strains and Curvatures -----------------------\n')
-        fprintf(' εx0 = %g\n', eps_x0);
-        fprintf(' εy0 = %g\n', eps_y0);
-        fprintf(' γxy0 = %g\n', gamma_xy0);
-        fprintf(' Kx0 = %g\n', K_x0);
-        fprintf(' Ky0 = %g\n', K_y0);
-        fprintf(' Kxy0 = %g\n', K_xy0);
-        fprintf('\n')
-     
-        % Display Resultant Forces and Moments
-        fprintf('----------------------- Resultant Forces and Moments -----------------------\n')
-        fprintf(' Nx = %d\n', forcevec(1));
-        fprintf(' Ny = %d\n', forcevec(2));
-        fprintf(' Nxy = %d\n', forcevec(3));
-        fprintf(' Mx = %d\n', momentvec(1));
-        fprintf(' My = %d\n', momentvec(2));
-        fprintf(' Mxy = %d\n', momentvec(3));
+        if printOpts.appStrains
+            fprintf('----------------------- Applied Mid-Surface Strains and Curvatures -----------------------\n')
+            fprintf(' εx0 = %g\n', eps_x0);
+            fprintf(' εy0 = %g\n', eps_y0);
+            fprintf(' γxy0 = %g\n', gamma_xy0);
+            fprintf(' Kx0 = %g\n', K_x0);
+            fprintf(' Ky0 = %g\n', K_y0);
+            fprintf(' Kxy0 = %g\n', K_xy0);
+            fprintf('\n')
+         
+            % Display Resultant Forces and Moments
+            fprintf('----------------------- Resultant Forces and Moments -----------------------\n')
+            fprintf(' Nx = %g\n', forcevec(1));
+            fprintf(' Ny = %g\n', forcevec(2));
+            fprintf(' Nxy = %g\n', forcevec(3));
+            fprintf(' Mx = %g\n', momentvec(1));
+            fprintf(' My = %g\n', momentvec(2));
+            fprintf(' Mxy = %g\n', momentvec(3));
+    
+            % Display Thermal Forces and Moments
+            fprintf('----------------------- Thermal Forces and Moments -----------------------\n')
+            fprintf(' NxT = %g\n', Nx_T);
+            fprintf(' NyT = %g\n', Ny_T);
+            fprintf(' NxyT = %g\n', Nxy_T);
+            fprintf(' MxT = %g\n', Mx_T);
+            fprintf(' MyT = %g\n', My_T);
+            fprintf(' MxyT = %g\n', Mxy_T);
+    
+            % Display Moisture Forces and Moments
+            fprintf('----------------------- Moisture Forces and Moments -----------------------\n')
+            fprintf(' NxM = %g\n', Nx_M);
+            fprintf(' NyM = %g\n', Ny_M);
+            fprintf(' NxyM = %g\n', Nxy_M);
+            fprintf(' MxM = %g\n', Mx_M);
+            fprintf(' MyM = %g\n', My_M);
+            fprintf(' MxyM = %g\n', Mxy_M);
+        end
 
-        % Display Thermal Forces and Moments
-        fprintf('----------------------- Thermal Forces and Moments -----------------------\n')
-        fprintf(' NxT = %d\n', Nx_T);
-        fprintf(' NyT = %d\n', Ny_T);
-        fprintf(' NxyT = %d\n', Nxy_T);
-        fprintf(' MxT = %d\n', Mx_T);
-        fprintf(' MyT = %d\n', My_T);
-        fprintf(' MxyT = %d\n', Mxy_T);
-
-        % Display Moisture Forces and Moments
-        fprintf('----------------------- Moisture Forces and Moments -----------------------\n')
-        fprintf(' NxM = %d\n', Nx_M);
-        fprintf(' NyM = %d\n', Ny_M);
-        fprintf(' NxyM = %d\n', Nxy_M);
-        fprintf(' MxM = %d\n', Mx_M);
-        fprintf(' MyM = %d\n', My_M);
-        fprintf(' MxyM = %d\n', Mxy_M);
-
-    % Branch 2: Known Stress Resultants, Unknown Midsurface Strains
+    % Branch 3: Known Stress Resultants, Unknown Midsurface Strains
     elseif all(isnan(struct2array(midSurfStrains))) % if the midsurface strains/curvatures are not given/unknown
         % Extracting specified force resultants from input structure
         N_x = forceResultants.N_x;
@@ -281,50 +390,44 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         KvecXYZ = epsilonKappa0(4:6); % use this for later calculations
 
         % Display Applied Forces and Moments
-        fprintf('----------------------- Applied Forces and Moments -----------------------\n')
-        fprintf(' Nx = %d\n', N_x);
-        fprintf(' Ny = %d\n', N_y);
-        fprintf(' Nxy = %d\n', N_xy);
-        fprintf(' Mx = %d\n', M_x);
-        fprintf(' My = %d\n', M_y);
-        fprintf(' Mxy = %d\n', M_xy);
-        fprintf('\n')
-
-        % Display Resultant Mid-Surface Strains and Curvatures
-        fprintf('----------------------- Resultant Mid-Surface Strains and Curvatures -----------------------\n')
-        fprintf(' εx0 = %g\n', eps0vecXYZ(1));
-        fprintf(' εy0 = %g\n', eps0vecXYZ(2));
-        fprintf(' γxy0 = %g\n', eps0vecXYZ(3));
-        fprintf(' Kx0 = %g\n', KvecXYZ(1));
-        fprintf(' Ky0 = %g\n', KvecXYZ(2));
-        fprintf(' Kxy0 = %g\n', KvecXYZ(3));
-        fprintf('\n')
-
-        % Display Thermal Forces and Moments
-        fprintf('----------------------- Thermal Forces and Moments -----------------------\n')
-        fprintf(' NxT = %d\n', Nx_T);
-        fprintf(' NyT = %d\n', Ny_T);
-        fprintf(' NxyT = %d\n', Nxy_T);
-        fprintf(' MxT = %d\n', Mx_T);
-        fprintf(' MyT = %d\n', My_T);
-        fprintf(' MxyT = %d\n', Mxy_T);
-
-        % Display Moisture Forces and Moments
-        fprintf('----------------------- Moisture Forces and Moments -----------------------\n')
-        fprintf(' NxM = %d\n', Nx_M);
-        fprintf(' NyM = %d\n', Ny_M);
-        fprintf(' NxyM = %d\n', Nxy_M);
-        fprintf(' MxM = %d\n', Mx_M);
-        fprintf(' MyM = %d\n', My_M);
-        fprintf(' MxyM = %d\n', Mxy_M);
+        if printOpts.appLoads
+            fprintf('----------------------- Applied Forces and Moments -----------------------\n')
+            fprintf(' Nx = %g\n', N_x);
+            fprintf(' Ny = %g\n', N_y);
+            fprintf(' Nxy = %g\n', N_xy);
+            fprintf(' Mx = %g\n', M_x);
+            fprintf(' My = %g\n', M_y);
+            fprintf(' Mxy = %g\n', M_xy);
+            fprintf('\n')
     
-    % Branch 3: If Neither ForceResultants or midSurfStrains are specified.
-    elseif all(isnan(struct2array(forceResultants))) && all(isnan(struct2array(midSurfStrains)))
-        % This is just for a case where I want the code to just compute the
-        % ABD and abd matrices for a particular laminate
-        eps0vecXYZ = zeros(3,1);
-        KvecXYZ = zeros(3,1);
-        disp(" THE CODE IS ONLY COMPUTING ABD AND abd MATRICES. IGNORE STRESS AND STRAIN RESULTS.")
+            % Display Resultant Mid-Surface Strains and Curvatures
+            fprintf('----------------------- Resultant Mid-Surface Strains and Curvatures -----------------------\n')
+            fprintf(' εx0 = %g\n', eps0vecXYZ(1));
+            fprintf(' εy0 = %g\n', eps0vecXYZ(2));
+            fprintf(' γxy0 = %g\n', eps0vecXYZ(3));
+            fprintf(' Kx0 = %g\n', KvecXYZ(1));
+            fprintf(' Ky0 = %g\n', KvecXYZ(2));
+            fprintf(' Kxy0 = %g\n', KvecXYZ(3));
+            fprintf('\n')
+    
+            % Display Thermal Forces and Moments
+            fprintf('----------------------- Thermal Forces and Moments -----------------------\n')
+            fprintf(' NxT = %g\n', Nx_T);
+            fprintf(' NyT = %g\n', Ny_T);
+            fprintf(' NxyT = %g\n', Nxy_T);
+            fprintf(' MxT = %g\n', Mx_T);
+            fprintf(' MyT = %g\n', My_T);
+            fprintf(' MxyT = %g\n', Mxy_T);
+    
+            % Display Moisture Forces and Moments
+            fprintf('----------------------- Moisture Forces and Moments -----------------------\n')
+            fprintf(' NxM = %g\n', Nx_M);
+            fprintf(' NyM = %g\n', Ny_M);
+            fprintf(' NxyM = %g\n', Nxy_M);
+            fprintf(' MxM = %g\n', Mx_M);
+            fprintf(' MyM = %g\n', My_M);
+            fprintf(' MxyM = %g\n', Mxy_M);
+        end
     else
         error('ERROR: ONLY SPECIFY EITHER FORCES AND MOMENTS OR MIDSURFACE STRAINS AND CURVATURES.')
     end
@@ -419,10 +522,12 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
                          'VariableNames',{'Layer', 'z', 'εx', 'εy', 'γxy'});
    
     LaminateResults.StrainTableXYZ = strainValuesXYZ;
-    fprintf('----------------------Strain Results (XYZ)----------------------\n')
-    fprintf('\n')
-    disp(strainValuesXYZ)
 
+    if printOpts.strainXYZ
+        fprintf('----------------------Strain Results (XYZ)----------------------\n')
+        fprintf('\n')
+        disp(strainValuesXYZ)
+    end
     % Stress Table 
     LayerSigmaX = zeros(2*N,1);
     LayerSigmaY = zeros(2*N,1);
@@ -439,10 +544,12 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     stressValuesXYZ = table(LayerNum, LayerZCoord, LayerSigmaX, LayerSigmaY, LayerTauXY,...
                             'VariableNames',{'Layer', 'z', 'σx', 'σy', 'τxy'});
     LaminateResults.StressTableXYZ = stressValuesXYZ;
-    fprintf('-----------------------Stress Results (XYZ)-----------------------\n')
-    fprintf('\n')
-    disp(stressValuesXYZ)
-
+    
+    if printOpts.stressXYZ
+        fprintf('-----------------------Stress Results (XYZ)-----------------------\n')
+        fprintf('\n')
+        disp(stressValuesXYZ)
+    end
     %% Creating Tabular Output for Stresses and Strains in 123
 
     % Strain Table
@@ -467,10 +574,12 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
                          'VariableNames',{'Layer', 'z', 'ε1', 'ε2', 'γ12'});
    
     LaminateResults.StrainTable123 = strainValues123;
-    fprintf('----------------------Strain Results (123)----------------------\n')
-    fprintf('\n')
-    disp(strainValues123)
-
+    
+    if printOpts.strain123
+        fprintf('----------------------Strain Results (123)----------------------\n')
+        fprintf('\n')
+        disp(strainValues123)
+    end
     % Stress Table 
     LayerSigma1 = zeros(2*N,1);
     LayerSigma2 = zeros(2*N,1);
@@ -487,8 +596,10 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     stressValues123 = table(LayerNum, LayerZCoord, LayerSigma1, LayerSigma2, LayerTau12,...
                             'VariableNames',{'Layer', 'z', 'σ1', 'σ2', 'τ12'});
     LaminateResults.StressTable123 = stressValues123;
-    fprintf('-----------------------Stress Results (123)-----------------------\n')
-    fprintf('\n')
-    disp(stressValues123)
-
+    
+    if printOpts.stress123
+        fprintf('-----------------------Stress Results (123)-----------------------\n')
+        fprintf('\n')
+        disp(stressValues123)
+    end
 end
