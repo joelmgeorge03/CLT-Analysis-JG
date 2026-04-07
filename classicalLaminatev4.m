@@ -76,19 +76,21 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     % Storing laminate classification
     LaminateResults.type = laminateType;
 
-    % Printing Result
-    if printOpts.type
-        fprintf('\n')
-        fprintf('---------- Laminate Classification ----------\n')
-        fprintf('Type: %s\n', laminateType)
-        fprintf('\n')
-    end
-
     % Computing the z-coordinates for the layer interfaces
     N = length(angleVec); % Extracting number of layers
     H = N*layerThickness; % computing total laminate thickness, assuming constant layer thickness
     zCoord = linspace(-H/2, H/2, N+1); % computing z-coordinates
     
+    % Printing Result
+    if printOpts.type
+        fprintf('\n')
+        fprintf('---------- Laminate Classification ----------\n')
+        fprintf('Type: %s\n', laminateType)
+        fprintf('Laminate Thickness: %.4f\n', H)
+        fprintf('\n')
+    end
+
+
     % Initializing Qbar, alpha, and beta for each layer
     QbarLayer = zeros(3,3,N); % 3x3 matrix for each ply 
     alphaLayerXYZ = zeros(3,1,N); % alpha_x, alpha_y, alpha_xy for each ply
