@@ -81,6 +81,9 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     H = N*layerThickness; % computing total laminate thickness, assuming constant layer thickness
     zCoord = linspace(-H/2, H/2, N+1); % computing z-coordinates
     
+    % Storing lamiante thickness
+    LaminateResults.thickness = H;
+
     % Printing Result
     if printOpts.type
         fprintf('\n')
