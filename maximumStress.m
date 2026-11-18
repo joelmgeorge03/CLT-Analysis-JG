@@ -1,12 +1,46 @@
 function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStrength)
     
+    % Modifying code to handle linear superposition for combined mechanical & thermal/moisture effects
+    inputs = laminateAnalysis.inputs;
+    f_mech = inputs.forceResultants; 
+    f_thermal_moisture = inputs.forceResultants;
+
+    s_mech = inputs.midSurfStrains;
+    s_thermal_moisture = inputs.midSurfStrains;
+
+    if ~all(structfun(@isnan, inputs.forceResultants)) % check if specified forces/moments are not all NaN
+        f_thermal_moisture = structfun(@(x) 0, inputs.forceResultants, 'UniformOutput', false); % set the forces and moments for the thermal/moisture only run to 0
+    else 
+        s_thermal_moisture = structfun(@(x) 0, inputs.midSurfStrains, 'UniformOutput', false); % set the midsurface strains and curvatures for the thermal/moisture only run to 0
+    end
+
+    evalc('mechanicalResults = classicalLaminatev4(inputs.properties, inputs.stack, inputs.layerThickness, s_mech, f_mech, 0, 0, []);');
+    evalc('thermalMoistureResults = classicalLaminatev4(inputs.properties, inputs.stack, inputs.layerThickness, s_thermal_moisture, f_thermal_moisture, inputs.deltaT, inputs.deltaM, []);');
+
+    sigmaMech = table2array(mechanicalResults.StressTable123);
+    sigmaThermalMoisture =  table2array(thermalMoistureResults.StressTable123);
+    
+    sigma1_mech = sigmaMech(:,3);
+    sigma2_mech = sigmaMech(:,4);
+    tau12_mech = sigmaMech(:,5);
+
+    sigma1_tm = sigmaThermalMoisture(:,3);
+    sigma2_tm = sigmaThermalMoisture(:,4);
+    tau12_tm = sigmaThermalMoisture(:,5);
+
+    layerNum = sigmaMech(:,1);
+    zCoordLayer = sigmaMech(:,2);
+
+
     % Extracting Stress Results from laminateAnalysis struct
-    stressArray = table2array(laminateAnalysis.StressTable123);
-    layerNum = stressArray(:,1);
-    zCoordLayer = stressArray(:,2);
-    sigma1 = stressArray(:,3);
-    sigma2 = stressArray(:,4);
-    tau12 = stressArray(:,5);
+    % stressArray = table2array(laminateAnalysis.StressTable123);
+    % layerNum = stressArray(:,1);
+    % zCoordLayer = stressArray(:,2);
+    % sigma1 = stressArray(:,3);
+    % sigma2 = stressArray(:,4);
+    % tau12 = stressArray(:,5);
+
+
     
     % Extracting Principle Strengths from struct
     Xc = principleStrength.Xc;
@@ -16,22 +50,28 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     S = principleStrength.S;
     
     % Checking Xc
-    failureXc = -Xc./sigma1;
+    failureXc = (-Xc - sigma1_tm)./sigma1_mech;
     
     % Checking Xt
-    failureXt = Xt./sigma1;
+    failureXt = (Xt - sigma1_tm)./sigma1_mech;
     
     % Checking Yc
-    failureYc = -Yc./sigma2;
+    failureYc = (-Yc - sigma2_tm)./sigma2_mech;
     
     % Checking Yt
-    failureYt = Yt./sigma2;
+    failureYt = (Yt - sigma2_tm)./sigma2_mech;
     
     % Checking +S
-    failurePosS = S./tau12;
+    failurePosS = (S - tau12_tm)./tau12_mech;
     
     % Checking -S 
-    failureNegS = -S./tau12;
+    failureNegS = (-S - tau12_tm)./tau12_mech;
+
+    % in the case that the residual stress from thermal/moisture already
+    % causes failure in the laminate
+    if any(sigma1_tm > Xt | sigma1_tm < -Xc | sigma2_tm > Yt | sigma2_tm < -Yc | abs(tau12_tm) > S)
+        warning('Thermal/Moisture stress alone exceeds an allowable; failure occurs at zero applied load.');
+    end
     
     % Creating Table for Displaying Failure Loads in Each Layer
     failureLoadsTable = table(layerNum, zCoordLayer, failureXc, failureXt, failureYc, failureYt, failurePosS, failureNegS,...

@@ -1,7 +1,17 @@
 function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThickness, midSurfStrains, forceResultants, deltaT, deltaM, printOpts)
 
+    % storing input values with its associated analysis
+    LaminateResults.inputs = struct(...
+        'properties', properties, ...
+        'stack', angleVec, ...
+        'layerThickness', layerThickness, ...
+        'midSurfStrains', midSurfStrains, ...
+        'forceResultants', forceResultants, ... 
+        'deltaT', deltaT, ...
+        'deltaM', deltaM);
+
     % Improving usability and making print statements silent by default. 
-    % If printed outputs are desired, then it must be specfied via the
+    % If printed outputs are desired, then it must be specified via the
     % printOpts input
 
     % By default, nothing prints to the command window
@@ -18,8 +28,11 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     defaultOpts.stress123 = false;
 
     % The following check is used to make this code backwards compatible
-    % with previous implementations of this code that did not have
-    % printOpts
+    % with previous implementations of this code.
+
+    % if printOpts is not specified or provided, the code assumes that the
+    % user wants everything to print. This is to handle legacy calls that
+    % printed everything and did not specify printOpts.
 
     if nargin < 8
         fields = fieldnames(defaultOpts);
@@ -40,7 +53,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     % Evaluating the laminate sequence
     
     % Symmetry check: 
-    isSymmetric = isequal(angleVec, fliplr(angleVec) );
+    isSymmetric = isequal(angleVec, flip(angleVec) );
 
     % Balanced check:
     isBalanced = false; % default assumption
@@ -303,7 +316,6 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     My_M = Myhat_M*deltaM;
     Mxy_M = Mxyhat_M*deltaM;
 
-
     % Branch 1: If Neither ForceResultants or midSurfStrains are specified.
     if all(isnan(struct2array(forceResultants))) && all(isnan(struct2array(midSurfStrains)))
         % This is just for a case where I want the code to just compute the
@@ -313,8 +325,8 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         if printOpts.ABD
             disp("WARNING: THE CODE IS ONLY COMPUTING [ABD] AND [abd] MATRICES. IGNORE STRESS AND STRAIN RESULTS.")
         end
-    % Branch 2: Known Midsurface Strains, Unknown Force and Moment
-    % Resultants
+    
+    % Branch 2: Known Midsurface Strains, Unknown Force and Moment Resultants
     elseif all(isnan(struct2array(forceResultants))) % If the force resultants are not given/unkown
         % Extracting specified midsurface strains from input structure
         eps_x0 = midSurfStrains.eps_x0; 
@@ -329,7 +341,13 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         epsilonKappa0 = [eps0vecXYZ; KvecXYZ];
 
         % Compute the force and moment resultants
-        forceMoment = ABDmat*epsilonKappa0;
+        NM_MT = [Nx_T + Nx_M; 
+                 Ny_T + Ny_M;
+                 Nxy_T + Nxy_M;
+                 Mx_T + Mx_M;
+                 My_T + My_M;
+                 Mxy_T + Mxy_M]; % thermal and moisture resultants combined
+        forceMoment = ABDmat*epsilonKappa0 - NM_MT;
         forcevec = forceMoment(1:3);
         momentvec = forceMoment(4:6);
 

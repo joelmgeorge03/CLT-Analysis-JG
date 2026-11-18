@@ -1,12 +1,46 @@
 function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStrength)
     
-    % Extracting Stress Results from laminateAnalysis struct
-    stressArray = table2array(laminateAnalysis.StressTable123);
+    % Modifying code to handle linear superposition for combined mechanical & thermal/moisture effects
+    inputs = laminateAnalysis.inputs;
+    f_mech = inputs.forceResultants; 
+    f_thermal_moisture = inputs.forceResultants;
+
+    s_mech = inputs.midSurfStrains;
+    s_thermal_moisture = inputs.midSurfStrains;
+
+    if ~all(structfun(@isnan, inputs.forceResultants)) % check if specified forces/moments are all NaN
+        f_thermal_moisture = structfun(@(x) 0, inputs.forceResultants, 'UniformOutput', false); % set the forces and moments for the thermal/moisture only run to 0
+    else 
+        s_thermal_moisture = structfun(@(x) 0, inputs.midSurfStrains, 'UniformOutput', false); % set the midsurface strains and curvatures for the thermal/moisture only run to 0
+    end
+
+    evalc('mechanicalResults = classicalLaminatev4(inputs.properties, inputs.stack, inputs.layerThickness, s_mech, f_mech, deltaT = 0, deltaM = 0, []);');
+    evalc('thermalMoistureResults = classicalLaminatev4(inputs.properties, inputs.stack, inputs.layerThickness, s_thermal_moisture, f_thermal_moisture, inputs.deltaT, inputs.deltaM, []);');
+
+    sigmaMech = table2array(mechanicalResults.StressTable123);
+    sigmaThermalMoisture =  table2array(thermalMoistureResults.StressTable123);
+    
+    sigma1_mech = sigmaMech(:,3);
+    sigma2_mech = sigmaMech(:,4);
+    tau12_mech = sigmaMech(:,5);
+
+    sigma1_tm = sigmaThermalMoisture(:,3);
+    sigma2_tm = sigmaThermalMoisture(:,4);
+    tau12_tm = sigmaThermalMoisture(:,5);
+
     layerNum = stressArray(:,1);
     zCoordLayer = stressArray(:,2);
-    sigma1 = stressArray(:,3);
-    sigma2 = stressArray(:,4);
-    tau12 = stressArray(:,5);
+
+
+    % Extracting Stress Results from laminateAnalysis struct
+    % stressArray = table2array(laminateAnalysis.StressTable123);
+    % layerNum = stressArray(:,1);
+    % zCoordLayer = stressArray(:,2);
+    % sigma1 = stressArray(:,3);
+    % sigma2 = stressArray(:,4);
+    % tau12 = stressArray(:,5);
+
+
     
     % Extracting Principle Strengths from struct
     Xc = principleStrength.Xc;
@@ -16,22 +50,22 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     S = principleStrength.S;
     
     % Checking Xc
-    failureXc = -Xc./sigma1;
+    failureXc = (-Xc - sigma1_tm)./sigma1_mech;
     
     % Checking Xt
-    failureXt = Xt./sigma1;
+    failureXt = (Xt - sigma1_tm)./sigma1_mech;
     
     % Checking Yc
-    failureYc = -Yc./sigma2;
+    failureYc = (-Yc - sigma2_tm)./sigma2_mech;
     
     % Checking Yt
-    failureYt = Yt./sigma2;
+    failureYt = (Yt - sigma2_tm)./sigma2_mech;
     
     % Checking +S
-    failurePosS = S./tau12;
+    failurePosS = (S)./tau12_mech;
     
     % Checking -S 
-    failureNegS = -S./tau12;
+    failureNegS = (-S)./tau12_mech;
     
     % Creating Table for Displaying Failure Loads in Each Layer
     failureLoadsTable = table(layerNum, zCoordLayer, failureXc, failureXt, failureYc, failureYt, failurePosS, failureNegS,...
@@ -58,14 +92,14 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     [tensileFailureRowIdx, tensileFailureColIdx] = find(failureLoads == tensileFailureLoad, 1, 'first');
     [compressiveFailureRowIdx, compressiveFailureColIdx] = find(failureLoads == compressiveFailureLoad, 1, 'first');
 
-    [tensileFailureRowIdxList, tensileFailureColIdx] = find(failureLoads == tensileFailureLoad, 1, 'first');
-    [compressiveFailureRowIdx, compressiveFailureColIdx] = find(failureLoads == compressiveFailureLoad, 1, 'first');
+    [tensileFailureRowIdxList, ~] = find(failureLoads == tensileFailureLoad);
+    [compressiveFailureRowIdxList, ~] = find(failureLoads == compressiveFailureLoad);
 
     failedLayerTensile = layerNum(tensileFailureRowIdx,1);
     failedLayerCompressive = layerNum(compressiveFailureRowIdx,1);
 
-    failedLayerTensileList = layerNum(tensileFailureRowIdx,1);
-    failedLayerCompressiveList = layerNum(compressiveFailureRowIdx,1);
+    failedLayerTensileList = layerNum(tensileFailureRowIdxList,1);
+    failedLayerCompressiveList = layerNum(compressiveFailureRowIdxList,1);
 
     maximumStressAnalysis.tensileLoadFailureMode = 'Undefined';
     maximumStressAnalysis.compressiveLoadFailureMode = 'Undefined';
@@ -107,12 +141,12 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
 
     % Displaying Failure Loads and Failure Mode
     disp(' The layer(s) that control failure for a tensile load are: ')
-    disp(failedLayerTensile)
-    disp([' First-Play Failure Tensile Load = ', num2str(tensileFailureLoad), ' Newtons/meter.'])
+    disp(failedLayerTensileList)
+    disp([' First-Ply Failure Tensile Load = ', num2str(tensileFailureLoad), ' Newtons/meter.'])
     disp([' The failure mode under this tensile load is ', maximumStressAnalysis.tensileLoadFailureMode])
     disp(' ')
     disp(' The layer(s) that control failure for a compressive load are: ')
-    disp(failedLayerCompressive)
-    disp([' First-Play Failure Compressive Load = ', num2str(compressiveFailureLoad), ' Newtons/meter.'])
+    disp(failedLayerCompressiveList)
+    disp([' First-Ply Failure Compressive Load = ', num2str(compressiveFailureLoad), ' Newtons/meter.'])
     disp([' The failure mode under this compressive load is ', maximumStressAnalysis.compressiveLoadFailureMode])
 end

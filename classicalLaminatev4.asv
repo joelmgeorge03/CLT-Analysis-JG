@@ -1,5 +1,16 @@
 function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThickness, midSurfStrains, forceResultants, deltaT, deltaM, printOpts)
 
+    % storing input values with its associated analysis
+    LaminateResults.inputs = struct(...
+        'properties', properties, ...
+        'stack', angleVec, ...
+        )
+
+
+
+
+
+
     % Improving usability and making print statements silent by default. 
     % If printed outputs are desired, then it must be specfied via the
     % printOpts input
@@ -40,7 +51,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     % Evaluating the laminate sequence
     
     % Symmetry check: 
-    isSymmetric = isequal(angleVec, fliplr(angleVec) );
+    isSymmetric = isequal(angleVec, flip(angleVec) );
 
     % Balanced check:
     isBalanced = false; % default assumption
@@ -76,19 +87,24 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     % Storing laminate classification
     LaminateResults.type = laminateType;
 
-    % Printing Result
-    if printOpts.type
-        fprintf('\n')
-        fprintf('---------- Laminate Classification ----------\n')
-        fprintf('Type: %s\n', laminateType)
-        fprintf('\n')
-    end
-
     % Computing the z-coordinates for the layer interfaces
     N = length(angleVec); % Extracting number of layers
     H = N*layerThickness; % computing total laminate thickness, assuming constant layer thickness
     zCoord = linspace(-H/2, H/2, N+1); % computing z-coordinates
     
+    % Storing lamiante thickness
+    LaminateResults.thickness = H;
+
+    % Printing Result
+    if printOpts.type
+        fprintf('\n')
+        fprintf('---------- Laminate Classification ----------\n')
+        fprintf('Type: %s\n', laminateType)
+        fprintf('Laminate Thickness: %.4f\n', H)
+        fprintf('\n')
+    end
+
+
     % Initializing Qbar, alpha, and beta for each layer
     QbarLayer = zeros(3,3,N); % 3x3 matrix for each ply 
     alphaLayerXYZ = zeros(3,1,N); % alpha_x, alpha_y, alpha_xy for each ply
@@ -298,6 +314,10 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     My_M = Myhat_M*deltaM;
     Mxy_M = Mxyhat_M*deltaM;
 
+    % storing laminate thermal and moisture deltas
+    LaminateResults.deltaT = deltaT;
+    LaminateResults.deltaM = deltaM;
+
 
     % Branch 1: If Neither ForceResultants or midSurfStrains are specified.
     if all(isnan(struct2array(forceResultants))) && all(isnan(struct2array(midSurfStrains)))
@@ -308,8 +328,8 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         if printOpts.ABD
             disp("WARNING: THE CODE IS ONLY COMPUTING [ABD] AND [abd] MATRICES. IGNORE STRESS AND STRAIN RESULTS.")
         end
-    % Branch 2: Known Midsurface Strains, Unknown Force and Moment
-    % Resultants
+    
+    % Branch 2: Known Midsurface Strains, Unknown Force and Moment Resultants
     elseif all(isnan(struct2array(forceResultants))) % If the force resultants are not given/unkown
         % Extracting specified midsurface strains from input structure
         eps_x0 = midSurfStrains.eps_x0; 
@@ -324,7 +344,13 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         epsilonKappa0 = [eps0vecXYZ; KvecXYZ];
 
         % Compute the force and moment resultants
-        forceMoment = ABDmat*epsilonKappa0;
+        NM_MT = [Nx_T + Nx_M; 
+                 Ny_T + Ny_M;
+                 Nxy_T + Nxy_M;
+                 Mx_T + Mx_M;
+                 My_T + My_M;
+                 Mxy_T + Mxy_M]; % thermal and moisture resultants combined
+        forceMoment = ABDmat*epsilonKappa0 - NM_MT;
         forcevec = forceMoment(1:3);
         momentvec = forceMoment(4:6);
 
