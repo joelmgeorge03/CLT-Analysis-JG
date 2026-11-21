@@ -31,7 +31,6 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     layerNum = sigmaMech(:,1);
     zCoordLayer = sigmaMech(:,2);
 
-
     % Extracting Stress Results from laminateAnalysis struct
     % stressArray = table2array(laminateAnalysis.StressTable123);
     % layerNum = stressArray(:,1);
@@ -39,8 +38,6 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     % sigma1 = stressArray(:,3);
     % sigma2 = stressArray(:,4);
     % tau12 = stressArray(:,5);
-
-
     
     % Extracting Principle Strengths from struct
     Xc = principleStrength.Xc;
@@ -67,8 +64,7 @@ function [maximumStressAnalysis] = maximumStress(laminateAnalysis, principleStre
     % Checking -S 
     failureNegS = (-S - tau12_tm)./tau12_mech;
 
-    % in the case that the residual stress from thermal/moisture already
-    % causes failure in the laminate
+    % in the case that the residual stress from thermal/moisture already causes failure in the laminate
     if any(sigma1_tm > Xt | sigma1_tm < -Xc | sigma2_tm > Yt | sigma2_tm < -Yc | abs(tau12_tm) > S)
         warning('Thermal/Moisture stress alone exceeds an allowable; failure occurs at zero applied load.');
     end

@@ -56,7 +56,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     isSymmetric = isequal(angleVec, flip(angleVec) );
 
     % Balanced check:
-    isBalanced = false; % default assumption
+    isBalanced = true; % default assumption
     uniquePly = unique(abs(angleVec)); % find unique angles
     for i = 1:length(uniquePly)
         plyAngle = uniquePly(i);
@@ -65,8 +65,8 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
         end
         nPositive = sum(angleVec == plyAngle);
         nNegative = sum(angleVec == -plyAngle);
-        if nPositive == nNegative
-            isBalanced = true;
+        if nPositive ~= nNegative
+            isBalanced = false;
             break;
         end
     end
@@ -94,7 +94,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     H = N*layerThickness; % computing total laminate thickness, assuming constant layer thickness
     zCoord = linspace(-H/2, H/2, N+1); % computing z-coordinates
     
-    % Storing lamiante thickness
+    % Storing laminate thickness
     LaminateResults.thickness = H;
 
     % Printing Result
@@ -117,7 +117,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     Bmat = zeros(3,3); % Initializing B matrix
     Dmat = zeros(3,3); % Initializing D matrix
 
-    % Initialzing Unit Thermal Stress Resultants
+    % Initializing Unit Thermal Stress Resultants
     Nxhat_T = 0;
     Nyhat_T = 0;
     Nxyhat_T = 0;
@@ -300,8 +300,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
     end
 %% Computing Midsurface Strains/Stresses
 
-    % Computing Thermal and Moisture Effects
-    % Use Equation 11.69 from Hyer
+    % Computing Thermal and Moisture Effects - Equation 11.69 from Hyer
     Nx_T = Nxhat_T*deltaT;
     Ny_T = Nyhat_T*deltaT;
     Nxy_T = Nxyhat_T*deltaT;
@@ -318,8 +317,7 @@ function [LaminateResults] = classicalLaminatev4( properties, angleVec, layerThi
 
     % Branch 1: If Neither ForceResultants or midSurfStrains are specified.
     if all(isnan(struct2array(forceResultants))) && all(isnan(struct2array(midSurfStrains)))
-        % This is just for a case where I want the code to just compute the
-        % ABD and abd matrices for a particular laminate
+        % This is just for a case where I want the code to just compute the ABD and abd matrices for a particular laminate
         eps0vecXYZ = zeros(3,1);
         KvecXYZ = zeros(3,1);
         if printOpts.ABD
